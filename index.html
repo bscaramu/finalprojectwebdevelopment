@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSville Package Tracking System</title>
+    <meta name="description" content="Package Tracking and Management System">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        .container {
+            width: 90%;
+            max-width: 1100px;
+            margin: 0 auto;
+            overflow: hidden;
+            padding: 20px;
+        }
+        .package-form, .package-list {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .package-form input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .package-form button, .sort-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .package-form button:hover, .sort-button:hover {
+            background-color: #45a049;
+        }
+        .error-message {
+            color: red;
+            font-size: 0.8em;
+            margin-top: -10px;
+            margin-bottom: 10px;
+        }
+        .package-item {
+            background-color: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>JSville Package Tracking System</h1>
+        
+        <div class="package-form">
+            <form id="packageForm">
+                <input type="text" id="recipientName" placeholder="Recipient Name" required>
+                <div id="recipientNameError" class="error-message"></div>
+                
+                <input type="text" id="packageId" placeholder="Package ID" required>
+                <div id="packageIdError" class="error-message"></div>
+                
+                <input type="text" id="deliveryAddress" placeholder="Delivery Address" required>
+                <div id="deliveryAddressError" class="error-message"></div>
+                
+                <input type="number" step="0.1" id="weight" placeholder="Weight (kg)" required>
+                <div id="weightError" class="error-message"></div>
+                
+                <button type="submit">Add Package</button>
+            </form>
+        </div>
+        
+        <div class="package-list">
+            <h2>Package List</h2>
+            <div id="packageList"></div>
+            <button id="sortPackages" class="sort-button">Sort Packages by Weight</button>
+        </div>
+    </div>
+
+    <script>
+        class PackageTrackingSystem {
+            constructor() {
+                this.packages = [];
+            }
+
+            validateRecipientName(name) {
+                const nameRegex = /^[A-Za-z\s]+$/;
+                return nameRegex.test(name) && name.trim() !== '';
+            }
+
+            validatePackageId(id) {
+                return /^\d+$/.test(id) && id !== '';
+            }
+
+            validateDeliveryAddress(address) {
+                return address.trim() !== '' && !/\d/.test(address);
+            }
+
+            validateWeight(weight) {
+                const parsedWeight = parseFloat(weight);
+                return !isNaN(parsedWeight) && parsedWeight > 0;
+            }
+
+            generateTrackingCode(packageId, weight) {
+                // Ensure both values are converted to integers for bitwise operations
+                const id = parseInt(packageId);
+                const weightRounded = Math.round(parseFloat(weight));
+                
+                // Use bitwise shift and OR operation
+                return (id << 4 | weightRounded).toString(2);
+            }
+
+            addPackage(packageData) {
+                const { recipientName, packageId, deliveryAddress, weight } = packageData;
+                const validationErrors = [];
+
+                if (!this.validateRecipientName(recipientName)) {
+                    validationErrors.push('Invalid Recipient Name');
+                }
+
+                if (!this.validatePackageId(packageId)) {
+                    validationErrors.push('Invalid Package ID');
+                }
+
+                if (!this.validateDeliveryAddress(deliveryAddress)) {
+                    validationErrors.push('Invalid Delivery Address');
+                }
+
+                if (!this.validateWeight(weight)) {
+                    validationErrors.push('Invalid Weight');
+                }
+
+                if (validationErrors.length > 0) {
+                    return {
+                        success: false,
+                        errors: validationErrors
+                    };
+                }
+
+                const trackingCode = this.generateTrackingCode(packageId, weight);
+
+                const validPackage = {
+                    recipientName,
+                    packageId,
+                    deliveryAddress,
+                    weight: parseFloat(weight),
+                    trackingCode
+                };
+
+                this.packages.push(validPackage);
+
+                return {
+                    success: true,
+                    package: validPackage
+                };
+            }
+
+            mergeSort(packages) {
+                if (packages.length <= 1) return packages;
+
+                const mid = Math.floor(packages.length / 2);
+                const left = packages.slice(0, mid);
+                const right = packages.slice(mid);
+
+                return this.merge(
+                    this.mergeSort(left), 
+                    this.mergeSort(right)
+                );
+            }
+
+            merge(left, right) {
+                let result = [];
+                let leftIndex = 0;
+                let rightIndex = 0;
+
+                while (leftIndex < left.length && rightIndex < right.length) {
+                    if (left[leftIndex].weight <= right[rightIndex].weight) {
+                        result.push(left[leftIndex]);
+                        leftIndex++;
+                    } else {
+                        result.push(right[rightIndex]);
+                        rightIndex++;
+                    }
+                }
+
+                return result.concat(
+                    left.slice(leftIndex), 
+                    right.slice(rightIndex)
+                );
+            }
+
+            sortPackages() {
+                this.packages = this.mergeSort(this.packages);
+                return this.packages;
+            }
+
+            getPackages() {
+                return this.packages;
+            }
+        }
+
+        // UI Integration
+        document.addEventListener('DOMContentLoaded', () => {
+            const trackingSystem = new PackageTrackingSystem();
+            const packageForm = document.getElementById('packageForm');
+            const packageList = document.getElementById('packageList');
+            const sortPackagesBtn = document.getElementById('sortPackages');
+
+            // Clear error messages
+            function clearErrors() {
+                ['recipientName', 'packageId', 'deliveryAddress', 'weight'].forEach(field => {
+                    document.getElementById(`${field}Error`).textContent = '';
+                });
+            }
+
+            // Display errors
+            function displayErrors(errors) {
+                errors.forEach(error => {
+                    if (error.includes('Recipient Name')) 
+                        document.getElementById('recipientNameError').textContent = error;
+                    if (error.includes('Package ID')) 
+                        document.getElementById('packageIdError').textContent = error;
+                    if (error.includes('Delivery Address')) 
+                        document.getElementById('deliveryAddressError').textContent = error;
+                    if (error.includes('Weight')) 
+                        document.getElementById('weightError').textContent = error;
+                });
+            }
+
+            // Render package list
+            function renderPackageList() {
+                const packages = trackingSystem.getPackages();
+                packageList.innerHTML = packages.length === 0 
+                    ? '<p>No packages added yet.</p>'
+                    : packages.map(pkg => `
+                        <div class="package-item">
+                            <strong>Recipient:</strong> ${pkg.recipientName}<br>
+                            <strong>Package ID:</strong> ${pkg.packageId}<br>
+                            <strong>Address:</strong> ${pkg.deliveryAddress}<br>
+                            <strong>Weight:</strong> ${pkg.weight} kg<br>
+                            <strong>Tracking Code:</strong> ${pkg.trackingCode}
+                        </div>
+                    `).join('');
+            }
+
+            // Form submission
+            packageForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                clearErrors();
+
+                const packageData = {
+                    recipientName: document.getElementById('recipientName').value,
+                    packageId: document.getElementById('packageId').value,
+                    deliveryAddress: document.getElementById('deliveryAddress').value,
+                    weight: document.getElementById('weight').value
+                };
+
+                const result = trackingSystem.addPackage(packageData);
+
+                if (result.success) {
+                    packageForm.reset();
+                    renderPackageList();
+                } else {
+                    displayErrors(result.errors);
+                }
+            });
+
+            // Sort packages
+            sortPackagesBtn.addEventListener('click', () => {
+                trackingSystem.sortPackages();
+                renderPackageList();
+            });
+        });
+    </script>
+</body>
+</html>
